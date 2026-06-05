@@ -131,18 +131,19 @@ function App() {
   };
 
   const handleExportPdf = async () => {
-    if (!newPdfFile) {
-      alert("No New PDF loaded to export.");
+    const targetFile = newPdfFile || oldPdfFile;
+    if (!targetFile) {
+      alert("No PDF loaded to export.");
       return;
     }
 
     try {
       let arrayBuffer: ArrayBuffer;
-      if (typeof newPdfFile === 'string') {
-        const response = await fetch(newPdfFile);
+      if (typeof targetFile === 'string') {
+        const response = await fetch(targetFile);
         arrayBuffer = await response.arrayBuffer();
       } else {
-        arrayBuffer = await newPdfFile.arrayBuffer();
+        arrayBuffer = await targetFile.arrayBuffer();
       }
 
       const pdfDoc = await PDFDocument.load(arrayBuffer);
@@ -158,12 +159,11 @@ function App() {
           
           const options: any = {
             x: ann.x * width,
-            y: height - ((ann.y + ann.height) * height), // pdf-lib y axis is from bottom
+            y: height - ((ann.y + ann.height) * height), 
             width: ann.width * width,
             height: ann.height * height,
             borderColor: color,
             borderWidth: 2,
-            borderOpacity: 1
           };
           
           if (ann.transparent) {

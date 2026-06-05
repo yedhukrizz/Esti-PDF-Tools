@@ -51,6 +51,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
   const pageContainerRef = useRef<HTMLDivElement>(null);
   
   const [zoom, setZoom] = useState(1);
+  const [renderedZoom, setRenderedZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isOldVisible, setIsOldVisible] = useState(true);
   
@@ -82,25 +83,39 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
     return () => clearInterval(interval);
   }, [blinkEnabled, blinkRate]);
   
+  // Debounced renderedZoom for sharp rendering on zoom finish
+  useEffect(() => {
+    const t = setTimeout(() => setRenderedZoom(zoom), 400);
+    return () => clearTimeout(t);
+  }, [zoom]);
+
+  const [fitCalculated, setFitCalculated] = useState(false);
+
   // Fit to screen initial logic
   useEffect(() => {
     if (!containerRef.current || !pageContainerRef.current) return;
+    if (fitCalculated) return;
     
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         if (entry.target === pageContainerRef.current) {
           const containerHeight = containerRef.current!.clientHeight;
+          const containerWidth = containerRef.current!.clientWidth;
           const contentHeight = entry.contentRect.height;
+          const contentWidth = entry.contentRect.width;
           
-          // If the zoom is 1 and the content overflows, fit to screen automatically
-          if (contentHeight > 0 && containerHeight > 0) {
-            // Apply zoom to fit with 40px margin
-            const targetZoom = Math.max(0.1, Math.min(5, (containerHeight - 40) / contentHeight));
+          if (contentHeight > 0 && containerHeight > 0 && contentWidth > 0 && containerWidth > 0) {
+            const zoomY = (containerHeight - 40) / contentHeight;
+            const zoomX = (containerWidth - 40) / contentWidth;
+            const targetZoom = Math.max(0.05, Math.min(10, Math.min(zoomX, zoomY)));
             
-            // Only auto-fit if we're near zoom 1 to avoid jarring jumps when user is actively zooming
-            if (zoom === 1 || Math.abs(zoom - targetZoom) > 0.05) {
-                setZoom(targetZoom);
-            }
+            setZoom(targetZoom);
+            setPan({
+               x: (containerWidth - contentWidth * targetZoom) / 2,
+               y: Math.max(20, (containerHeight - contentHeight * targetZoom) / 2)
+            });
+            setFitCalculated(true);
+            observer.disconnect();
           }
         }
       }
@@ -108,7 +123,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
 
     observer.observe(pageContainerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [fitCalculated]);
 
   // Wheel zoom logic
   const handleWheel = (e: React.WheelEvent) => {
@@ -214,7 +229,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
         className="absolute origin-top-left"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
-        <div id="pdf-page-container" ref={pageContainerRef} className="relative shadow-xl bg-white flex items-center justify-center">
+        <div id="pdf-page-container" ref={pageContainerRef} className="relative shadow-xl bg-white flex items-center justify-center m-auto origin-center">
           {/* We'll render Old PDF if it exists and (OldVisible or no NewDoc exists) */}
           {oldPdfDoc && (
             <div className={`absolute top-0 left-0 transition-opacity duration-75 ${(!newPdfDoc || isOldVisible) ? 'opacity-100 z-10' : 'opacity-0 z-0'} ${tintEnabled ? 'mix-blend-multiply' : ''}`}>
@@ -222,6 +237,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
                 pdfDoc={oldPdfDoc} 
                 pageNumber={oldPageNumber} 
                 scale={1.5} 
+                renderScaleMultiplier={renderedZoom}
                 tint={tintEnabled ? 'red' : undefined} 
               />
             </div>
@@ -234,6 +250,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
                 pdfDoc={newPdfDoc} 
                 pageNumber={newPageNumber} 
                 scale={1.5} 
+                renderScaleMultiplier={renderedZoom}
                 tint={tintEnabled ? 'green' : undefined} 
               />
             </div>
@@ -242,7 +259,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
           {/* If there's no NewPdfDoc but OldPdfDoc exists, we need a placeholder to give the container size, but PdfPageRenderer of old will do it if oldPdfDoc is the only one rendered relative. We handled that by making old relative if no new doc? Wait! */}
           {!newPdfDoc && oldPdfDoc && (
             <div className="invisible">
-                <PdfPageRenderer pdfDoc={oldPdfDoc} pageNumber={oldPageNumber} scale={1.5} />
+                <PdfPageRenderer pdfDoc={oldPdfDoc} pageNumber={oldPageNumber} scale={1.5} renderScaleMultiplier={renderedZoom} />
             </div>
           )}
 

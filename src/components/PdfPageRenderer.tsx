@@ -4,6 +4,7 @@ export interface PdfPageRendererProps {
   pdfDoc: any;
   pageNumber: number;
   scale?: number;
+  renderScaleMultiplier?: number;
   width?: number; // Target width, overrides scale
   className?: string;
   tint?: string; // 'red' or 'green' or null
@@ -13,6 +14,7 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
   pdfDoc,
   pageNumber,
   scale = 1,
+  renderScaleMultiplier = 1,
   width,
   className = '',
   tint
@@ -44,7 +46,8 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
         if (!context) return;
 
         // Better handling of canvas sizing for high DPI
-        const outputScale = window.devicePixelRatio || 1;
+        const baseDpr = window.devicePixelRatio || 1;
+        const outputScale = baseDpr * renderScaleMultiplier;
         canvas.width = Math.floor(viewport.width * outputScale);
         canvas.height = Math.floor(viewport.height * outputScale);
         canvas.style.width = Math.floor(viewport.width) + 'px';
