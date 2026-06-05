@@ -19,6 +19,7 @@ interface InteractiveWorkspaceProps {
   selectedAnnotationId: string | null;
   drawColor: string;
   drawSemiTransparent: boolean;
+  qPressed: boolean;
 }
 
 export interface WorkspaceHandle {
@@ -43,9 +44,11 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
   onSelectAnnotation,
   selectedAnnotationId,
   drawColor,
-  drawSemiTransparent
+  drawSemiTransparent,
+  qPressed
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
   
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -79,14 +82,42 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
     return () => clearInterval(interval);
   }, [blinkEnabled, blinkRate]);
   
+  // Fit to screen initial logic
+  useEffect(() => {
+    if (!containerRef.current || !pageContainerRef.current) return;
+    
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === pageContainerRef.current) {
+          const containerHeight = containerRef.current!.clientHeight;
+          const contentHeight = entry.contentRect.height;
+          
+          // If the zoom is 1 and the content overflows, fit to screen automatically
+          if (contentHeight > 0 && containerHeight > 0) {
+            // Apply zoom to fit with 40px margin
+            const targetZoom = Math.max(0.1, Math.min(5, (containerHeight - 40) / contentHeight));
+            
+            // Only auto-fit if we're near zoom 1 to avoid jarring jumps when user is actively zooming
+            if (zoom === 1 || Math.abs(zoom - targetZoom) > 0.05) {
+                setZoom(targetZoom);
+            }
+          }
+        }
+      }
+    });
+
+    observer.observe(pageContainerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // Wheel zoom logic
   const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
+    if (e.ctrlKey || qPressed) {
       e.preventDefault();
       const zoomFactor = 1.1;
       const newZoom = e.deltaY < 0 ? zoom * zoomFactor : zoom / zoomFactor;
       
-      if (newZoom < 0.1 || newZoom > 20) return;
+      if (newZoom < 0.05 || newZoom > 20) return;
       
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
@@ -183,7 +214,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
         className="absolute origin-top-left"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
       >
-        <div id="pdf-page-container" className="relative shadow-xl bg-white flex items-center justify-center">
+        <div id="pdf-page-container" ref={pageContainerRef} className="relative shadow-xl bg-white flex items-center justify-center">
           {/* We'll render Old PDF if it exists and (OldVisible or no NewDoc exists) */}
           {oldPdfDoc && (
             <div className={`absolute top-0 left-0 transition-opacity duration-75 ${(!newPdfDoc || isOldVisible) ? 'opacity-100 z-10' : 'opacity-0 z-0'} ${tintEnabled ? 'mix-blend-multiply' : ''}`}>

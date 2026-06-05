@@ -34,10 +34,12 @@ function App() {
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 
   const workspaceRef = useRef<WorkspaceHandle>(null);
+  const [qPressed, setQPressed] = useState(false);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'q') setQPressed(true);
       if (e.code === 'Space' && drawMode !== 'pan') {
         setDrawMode('pan');
       }
@@ -45,10 +47,31 @@ function App() {
         setAnnotations(prev => prev.filter(a => a.id !== selectedAnnotationId));
         setSelectedAnnotationId(null);
       }
+      
+      if (viewMode === 'compare') {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setOldPageNumber(p => Math.min(numPages, p + 1));
+          setNewPageNumber(p => Math.min(numPages, p + 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setOldPageNumber(p => Math.max(1, p - 1));
+          setNewPageNumber(p => Math.max(1, p - 1));
+        }
+      }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [drawMode, selectedAnnotationId]);
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'q') setQPressed(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [drawMode, selectedAnnotationId, viewMode, numPages]);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -142,6 +165,7 @@ function App() {
             borderWidth: 2,
             borderOpacity: 1
           };
+          
           if (ann.transparent) {
             options.color = color;
             options.opacity = 0.25;
@@ -298,6 +322,7 @@ function App() {
               tintEnabled={tintEnabled}
               drawMode={drawMode}
               annotations={annotations}
+              qPressed={qPressed}
               onAddAnnotation={(ann) => {
                 setAnnotations(prev => [...prev, ann]);
                 setSelectedAnnotationId(ann.id);
