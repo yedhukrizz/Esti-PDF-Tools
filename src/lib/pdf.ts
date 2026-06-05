@@ -1,17 +1,17 @@
 import * as pdfjsLib from 'pdfjs-dist';
-// Standard Vite way to import a web worker
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
 
 export const loadPdfMap = async (file: File | string): Promise<any> => {
-  let url = '';
+  let source: any;
   if (typeof file === 'string') {
-    url = file;
+    source = { url: file };
   } else {
-    url = URL.createObjectURL(file);
+    const arrayBuffer = await file.arrayBuffer();
+    source = { data: new Uint8Array(arrayBuffer) };
   }
-  const loadingTask = pdfjsLib.getDocument(url);
+  const loadingTask = pdfjsLib.getDocument(source);
   const pdfDoc = await loadingTask.promise;
   return pdfDoc;
 };

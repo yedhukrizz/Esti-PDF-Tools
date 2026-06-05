@@ -21,6 +21,8 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
   const renderTaskRef = useRef<any>(null);
   const [renderedSrc, setRenderedSrc] = useState<string | null>(null);
 
+  const [renderError, setRenderError] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
 
@@ -28,6 +30,7 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
       if (!pdfDoc || !canvasRef.current) return;
 
       try {
+        setRenderError(null);
         const page = await pdfDoc.getPage(pageNumber);
         
         let viewport = page.getViewport({ scale });
@@ -93,6 +96,7 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
       } catch (err: any) {
         if (err.name !== 'RenderingCancelledException') {
           console.error("PDF Render error", err);
+          if (active) setRenderError(String(err));
         }
       }
     };
@@ -106,6 +110,10 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
       }
     };
   }, [pdfDoc, pageNumber, scale, width, tint]);
+
+  if (renderError) {
+    return <div className={`flex items-center justify-center bg-red-50 text-red-600 text-xs text-center border border-red-200 p-2 \${className}`} style={{ width: width || '100%', minHeight: 150 }}>Render Error: {renderError}</div>;
+  }
 
   return <canvas ref={canvasRef} className={className} />;
 };

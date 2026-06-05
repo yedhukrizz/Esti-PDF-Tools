@@ -45,17 +45,19 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [drawMode, selectedAnnotationId]);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   // Load old PDF
   useEffect(() => {
     if (!oldPdfFile) return;
     const load = async () => {
       try {
+        setLoadError(null);
         const doc = await loadPdfMap(oldPdfFile);
         setOldPdfDoc(doc);
-        if (!newPdfDoc || doc.numPages > numPages) {
-          setNumPages(doc.numPages);
-        }
-      } catch (err) {
+        if (doc.numPages) setNumPages(doc.numPages);
+      } catch (err: any) {
+        setLoadError(err?.message || String(err));
         console.error("Error loading old PDF", err);
       }
     };
@@ -67,17 +69,17 @@ function App() {
     if (!newPdfFile) return;
     const load = async () => {
       try {
+        setLoadError(null);
         const doc = await loadPdfMap(newPdfFile);
         setNewPdfDoc(doc);
-        if (!oldPdfDoc || doc.numPages > numPages) {
-          setNumPages(doc.numPages);
-        }
-      } catch (err) {
+        if (doc.numPages > numPages) setNumPages(doc.numPages);
+      } catch (err: any) {
+        setLoadError(err?.message || String(err));
         console.error("Error loading new PDF", err);
       }
     };
     load();
-  }, [newPdfFile]);
+  }, [newPdfFile, numPages]);
 
   const handleSelectOldFile = (f: File) => {
     setOldPdfFile(f);
@@ -244,8 +246,18 @@ function App() {
           {(!oldPdfDoc && !newPdfDoc) ? (
             <div className="absolute inset-0 flex items-center justify-center text-gray-400">
               <div className="text-center">
-                 <p className="text-lg font-medium mb-2">Welcome to Esti PDF Tools</p>
-                 <p className="text-sm">Load Old and New PDFs from the sidebar to begin comparison.</p>
+                 {loadError ? (
+                    <div className="bg-red-100 text-red-600 p-4 rounded-md shadow-sm border border-red-200">
+                      <p className="font-semibold mb-1">Error Loading PDF:</p>
+                      <p className="text-sm font-mono max-w-md break-words">{loadError}</p>
+                    </div>
+                 ) : (
+                    <>
+                       <p className="text-lg font-medium mb-2">Welcome to Esti PDF Tools</p>
+                       <p className="text-sm">Load Old and New PDFs from the sidebar to begin comparison.</p>
+                       <p className="text-xs mt-4">Debug: oldDoc={oldPdfDoc ? 'yes' : 'no'}, numPages={numPages}</p>
+                    </>
+                 )}
               </div>
             </div>
           ) : (
