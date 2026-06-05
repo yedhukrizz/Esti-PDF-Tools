@@ -1,0 +1,6 @@
+{
+  "name": "Esti PDF Tools",
+  "description": "An offline React web app for comparing PDFs natively with vector graphics, page blinking, and drawing tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
