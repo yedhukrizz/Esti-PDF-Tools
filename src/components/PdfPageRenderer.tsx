@@ -21,8 +21,6 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
-  const [renderedSrc, setRenderedSrc] = useState<string | null>(null);
-
   const [renderError, setRenderError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,12 +86,6 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
                const g = data[i+1];
                const b = data[i+2];
                
-               // Convert to greyscale (luma) and invert to make the drawing white
-               // Actually we just colorize the background (which is white) to tint.
-               // Wait! A standard multiply tint means replacing white with the tint, 
-               // and black stays black.
-               // So output rgb = input rgb * tint / 255
-               
                data[i] = (r * tr) / 255;
                data[i+1] = (g * tg) / 255;
                data[i+2] = (b * tb) / 255;
@@ -120,8 +112,8 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
   }, [pdfDoc, pageNumber, scale, width, tint, renderScaleMultiplier]);
 
   if (renderError) {
-    return <div className={`flex items-center justify-center bg-red-50 text-red-600 text-xs text-center border border-red-200 p-2 \${className}`} style={{ width: width || '100%', minHeight: 150 }}>Render Error: {renderError}</div>;
+    return <div className={`flex items-center justify-center bg-red-50 text-red-600 text-xs text-center border border-red-200 p-2 ${className}`} style={{ width: width || '100%', minHeight: 150 }}>Render Error: {renderError}</div>;
   }
 
-  return <canvas ref={canvasRef} className={className} />;
+  return <canvas ref={canvasRef} className={`shadow-sm bg-white ${className}`} style={{ display: 'block' }} />;
 };

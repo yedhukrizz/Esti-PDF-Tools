@@ -89,7 +89,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
   
   // Debounced renderedZoom for sharp rendering on zoom finish
   useEffect(() => {
-    const t = setTimeout(() => setRenderedZoom(zoom), 400);
+    const t = setTimeout(() => setRenderedZoom(zoom), 100);
     return () => clearTimeout(t);
   }, [zoom]);
 

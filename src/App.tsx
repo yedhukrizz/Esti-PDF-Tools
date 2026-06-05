@@ -158,7 +158,7 @@ function App() {
           const { width, height } = page.getSize();
           
           const rgbArr = hexToRgbArr(ann.color);
-          const color = rgb(rgbArr[0], rgbArr[1], rgbArr[2]);
+          const color = rgb(rgbArr[0] / 255, rgbArr[1] / 255, rgbArr[2] / 255);
           
           const options: any = {
             x: ann.x * width,

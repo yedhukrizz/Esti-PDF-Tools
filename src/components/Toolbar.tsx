@@ -199,7 +199,7 @@ export const Toolbar: React.FC<ToolbarProps> = (props) => {
           className="flex items-center gap-2 px-4 py-1.5 ml-2 bg-blue-600 text-white font-medium text-sm rounded-md hover:bg-blue-700 transition-colors shadow-sm"
         >
           <Download className="w-4 h-4" />
-          Export PDF
+          Export Annotated PDF
         </button>
       </div>
 
