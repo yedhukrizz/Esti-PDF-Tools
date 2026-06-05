@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { 
   Eye, EyeOff, MousePointer2, Square, Hand, 
-  Trash2, Download, Save, UploadCloud 
+  Trash2, Download, Save, UploadCloud, Settings, ZoomIn, ZoomOut, Maximize
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -28,6 +28,11 @@ interface ToolbarProps {
   onExportPdf: () => void;
   onSaveSession: () => void;
   onLoadSession: (file: File) => void;
+  
+  onBackToSetup: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
 }
 
 const colors = ['#e11d48', '#16a34a', '#2563eb', '#ca8a04', '#9333ea', '#000000'];
@@ -67,7 +72,11 @@ export const Toolbar: React.FC<ToolbarProps> = (props) => {
     <div className="w-full h-14 bg-white border-b border-gray-200 flex items-center px-4 justify-between shrink-0 shadow-sm z-10">
       
       {/* Left side tools (Comparison) */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
+        <button onClick={props.onBackToSetup} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-700 hover:bg-gray-100 rounded-md font-medium text-sm transition border border-transparent hover:border-gray-200">
+          <Settings className="w-4 h-4" /> Setup
+        </button>
+        <div className="h-6 w-px bg-gray-300"></div>
         <div className="flex items-center gap-3">
           <button 
             onClick={props.onToggleBlink}
@@ -98,6 +107,12 @@ export const Toolbar: React.FC<ToolbarProps> = (props) => {
 
       {/* Middle tools (Drawing) */}
       <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-1 bg-white p-1 rounded border border-gray-200 mr-2">
+          <button onClick={props.onZoomOut} className="p-1 text-gray-600 hover:bg-gray-100 rounded" title="Zoom Out"><ZoomOut className="w-4 h-4"/></button>
+          <button onClick={props.onResetZoom} className="p-1 text-gray-600 hover:bg-gray-100 rounded" title="Reset View"><Maximize className="w-4 h-4"/></button>
+          <button onClick={props.onZoomIn} className="p-1 text-gray-600 hover:bg-gray-100 rounded" title="Zoom In"><ZoomIn className="w-4 h-4"/></button>
+        </div>
+      
         <ModeButton mode="pan" icon={Hand} label="Pan (Hold Space or Middle Click)" />
         <ModeButton mode="select" icon={MousePointer2} label="Select" />
         <ModeButton mode="draw" icon={Square} label="Draw Rectangle" />

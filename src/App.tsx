@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { loadPdfMap, fileToBase64, createDataURLtoBlob } from './lib/pdf';
-import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
-import { InteractiveWorkspace } from './components/InteractiveWorkspace';
+import { InteractiveWorkspace, WorkspaceHandle } from './components/InteractiveWorkspace';
+import { SetupScreen } from './components/SetupScreen';
 import { Annotation, SessionFile } from './types';
 import { PDFDocument, rgb } from 'pdf-lib';
 
 function App() {
+  const [viewMode, setViewMode] = useState<'setup' | 'compare'>('setup');
+  
   const [oldPdfFile, setOldPdfFile] = useState<File | string | null>(null);
   const [newPdfFile, setNewPdfFile] = useState<File | string | null>(null);
   
@@ -16,7 +18,8 @@ function App() {
   const [newPdfName, setNewPdfName] = useState<string | null>(null);
 
   const [numPages, setNumPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [oldPageNumber, setOldPageNumber] = useState(1);
+  const [newPageNumber, setNewPageNumber] = useState(1);
 
   // App State
   const [blinkEnabled, setBlinkEnabled] = useState(false);
@@ -29,6 +32,8 @@ function App() {
   
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+
+  const workspaceRef = useRef<WorkspaceHandle>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -84,11 +89,13 @@ function App() {
   const handleSelectOldFile = (f: File) => {
     setOldPdfFile(f);
     setOldPdfName(f.name);
+    setOldPageNumber(1);
   };
   
   const handleSelectNewFile = (f: File) => {
     setNewPdfFile(f);
     setNewPdfName(f.name);
+    setNewPageNumber(1);
   };
 
   const hexToRgbArr = (hex: string) => {
@@ -126,17 +133,21 @@ function App() {
           const rgbArr = hexToRgbArr(ann.color);
           const color = rgb(rgbArr[0], rgbArr[1], rgbArr[2]);
           
-          page.drawRectangle({
+          const options: any = {
             x: ann.x * width,
             y: height - ((ann.y + ann.height) * height), // pdf-lib y axis is from bottom
             width: ann.width * width,
             height: ann.height * height,
             borderColor: color,
             borderWidth: 2,
-            color: ann.transparent ? color : undefined,
-            opacity: ann.transparent ? 0.25 : undefined,
             borderOpacity: 1
-          });
+          };
+          if (ann.transparent) {
+            options.color = color;
+            options.opacity = 0.25;
+          }
+          
+          page.drawRectangle(options);
         }
       });
 
@@ -151,27 +162,31 @@ function App() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Export error", err);
-      alert("Error exporting PDF.");
+      alert("Error exporting PDF: " + (err.message || String(err)));
     }
   };
 
   const handleSaveSession = async () => {
-    const session: SessionFile = {
-      oldPdfDataUrl: oldPdfFile instanceof File ? await fileToBase64(oldPdfFile) : oldPdfFile,
-      newPdfDataUrl: newPdfFile instanceof File ? await fileToBase64(newPdfFile) : newPdfFile,
-      oldPdfName,
-      newPdfName,
-      annotations
-    };
-    const blob = new Blob([JSON.stringify(session)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `session_${new Date().getTime()}.ecmp`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const session: SessionFile = {
+        oldPdfDataUrl: oldPdfFile instanceof File ? await fileToBase64(oldPdfFile) : oldPdfFile,
+        newPdfDataUrl: newPdfFile instanceof File ? await fileToBase64(newPdfFile) : newPdfFile,
+        oldPdfName,
+        newPdfName,
+        annotations
+      };
+      const blob = new Blob([JSON.stringify(session)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `session_${new Date().getTime()}.ecmp`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert("Failed to save session: " + String(e));
+    }
   };
 
   const handleLoadSession = (file: File) => {
@@ -192,6 +207,7 @@ function App() {
         if (session.annotations) {
           setAnnotations(session.annotations);
         }
+        setViewMode('setup'); // Force user to confirm pages after loading session
       } catch (err) {
         console.error(err);
         alert("Failed to load session file.");
@@ -200,22 +216,28 @@ function App() {
     reader.readAsText(file);
   };
 
-  return (
-    <div className="flex h-screen w-full bg-gray-100 overflow-hidden text-gray-900 font-sans">
-      <Sidebar 
+  if (viewMode === 'setup') {
+    return (
+      <SetupScreen 
         oldPdfFile={oldPdfFile}
         newPdfFile={newPdfFile}
         oldPdfDoc={oldPdfDoc}
         newPdfDoc={newPdfDoc}
-        numPages={numPages}
-        currentPage={currentPage}
+        oldPdfName={oldPdfName}
+        newPdfName={newPdfName}
+        oldPageNumber={oldPageNumber}
+        newPageNumber={newPageNumber}
         onSelectOldFile={handleSelectOldFile}
         onSelectNewFile={handleSelectNewFile}
-        onSelectPage={setCurrentPage}
-        oldPdfNameLabel={oldPdfName}
-        newPdfNameLabel={newPdfName}
+        onSelectOldPage={setOldPageNumber}
+        onSelectNewPage={setNewPageNumber}
+        onCompare={() => setViewMode('compare')}
       />
-      
+    );
+  }
+
+  return (
+    <div className="flex h-screen w-full bg-gray-100 overflow-hidden text-gray-900 font-sans">
       <div className="flex-1 flex flex-col min-w-0">
         <Toolbar 
           blinkEnabled={blinkEnabled}
@@ -240,6 +262,10 @@ function App() {
           onExportPdf={handleExportPdf}
           onSaveSession={handleSaveSession}
           onLoadSession={handleLoadSession}
+          onBackToSetup={() => setViewMode('setup')}
+          onZoomIn={() => workspaceRef.current?.zoomIn()}
+          onZoomOut={() => workspaceRef.current?.zoomOut()}
+          onResetZoom={() => workspaceRef.current?.resetView()}
         />
         
         <div className="flex-1 relative overflow-hidden bg-gray-200 shadow-inner">
@@ -262,9 +288,11 @@ function App() {
             </div>
           ) : (
             <InteractiveWorkspace 
+              ref={workspaceRef}
               oldPdfDoc={oldPdfDoc}
               newPdfDoc={newPdfDoc}
-              currentPage={currentPage}
+              oldPageNumber={oldPageNumber}
+              newPageNumber={newPageNumber}
               blinkEnabled={blinkEnabled}
               blinkRate={blinkRate}
               tintEnabled={tintEnabled}
@@ -295,4 +323,5 @@ function App() {
 }
 
 export default App;
+
 

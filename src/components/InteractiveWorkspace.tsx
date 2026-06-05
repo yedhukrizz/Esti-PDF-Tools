@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { PdfPageRenderer } from './PdfPageRenderer';
 import { Annotation } from '../types';
 
 interface InteractiveWorkspaceProps {
   oldPdfDoc: any;
   newPdfDoc: any;
-  currentPage: number;
+  oldPageNumber: number;
+  newPageNumber: number;
   blinkEnabled: boolean;
   blinkRate: number; // in ms
   tintEnabled: boolean;
@@ -20,10 +21,17 @@ interface InteractiveWorkspaceProps {
   drawSemiTransparent: boolean;
 }
 
-export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
+export interface WorkspaceHandle {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetView: () => void;
+}
+
+export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorkspaceProps>(({
   oldPdfDoc,
   newPdfDoc,
-  currentPage,
+  oldPageNumber,
+  newPageNumber,
   blinkEnabled,
   blinkRate,
   tintEnabled,
@@ -36,7 +44,7 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
   selectedAnnotationId,
   drawColor,
   drawSemiTransparent
-}) => {
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [zoom, setZoom] = useState(1);
@@ -48,6 +56,15 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
   
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentDrawRect, setCurrentDrawRect] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => setZoom(z => Math.min(20, z * 1.2)),
+    zoomOut: () => setZoom(z => Math.max(0.1, z / 1.2)),
+    resetView: () => {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  }));
 
   // Blink logic
   useEffect(() => {
@@ -83,25 +100,6 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
         setPan({ x: newX, y: newY });
       }
     }
-  };
-
-  const getPageCoords = (clientX: number, clientY: number) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = (clientX - rect.left - pan.x) / zoom;
-    const y = (clientY - rect.top - pan.y) / zoom;
-    return { x, y };
-  };
-
-  // Convert points to 0-1 range
-  const getNormalizedCoords = (clientX: number, clientY: number) => {
-    if (!containerRef.current) return { nx: 0, ny: 0 };
-    const pageContainer = document.getElementById('pdf-page-container');
-    if (!pageContainer) return { nx: 0, ny: 0 };
-    const rect = pageContainer.getBoundingClientRect();
-    const nx = (clientX - rect.left) / rect.width;
-    const ny = (clientY - rect.top) / rect.height;
-    return { nx, ny };
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -157,7 +155,7 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
       if (w > 0.01 && h > 0.01) {
         onAddAnnotation({
           id: Math.random().toString(36).substring(2, 9),
-          pageIndex: currentPage - 1,
+          pageIndex: newPageNumber - 1,
           x, y, width: w, height: h,
           color: drawColor,
           transparent: drawSemiTransparent
@@ -167,7 +165,8 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
     }
   };
 
-  const currentPageAnnotations = annotations.filter(a => a.pageIndex === currentPage - 1);
+  // Annotations are linked to the New Page Index we are comparing against.
+  const currentPageAnnotations = annotations.filter(a => a.pageIndex === newPageNumber - 1);
 
   return (
     <div 
@@ -190,7 +189,7 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
             <div className={`absolute top-0 left-0 transition-opacity duration-75 ${(!newPdfDoc || isOldVisible) ? 'opacity-100 z-10' : 'opacity-0 z-0'} ${tintEnabled ? 'mix-blend-multiply' : ''}`}>
               <PdfPageRenderer 
                 pdfDoc={oldPdfDoc} 
-                pageNumber={currentPage} 
+                pageNumber={oldPageNumber} 
                 scale={1.5} 
                 tint={tintEnabled ? 'red' : undefined} 
               />
@@ -202,7 +201,7 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
             <div className={`relative ${tintEnabled ? 'mix-blend-multiply' : ''}`}>
                <PdfPageRenderer 
                 pdfDoc={newPdfDoc} 
-                pageNumber={currentPage} 
+                pageNumber={newPageNumber} 
                 scale={1.5} 
                 tint={tintEnabled ? 'green' : undefined} 
               />
@@ -212,7 +211,7 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
           {/* If there's no NewPdfDoc but OldPdfDoc exists, we need a placeholder to give the container size, but PdfPageRenderer of old will do it if oldPdfDoc is the only one rendered relative. We handled that by making old relative if no new doc? Wait! */}
           {!newPdfDoc && oldPdfDoc && (
             <div className="invisible">
-                <PdfPageRenderer pdfDoc={oldPdfDoc} pageNumber={currentPage} scale={1.5} />
+                <PdfPageRenderer pdfDoc={oldPdfDoc} pageNumber={oldPageNumber} scale={1.5} />
             </div>
           )}
 
@@ -262,4 +261,5 @@ export const InteractiveWorkspace: React.FC<InteractiveWorkspaceProps> = ({
       </div>
     </div>
   );
-};
+});
+
