@@ -25,6 +25,8 @@ function App() {
   const [blinkEnabled, setBlinkEnabled] = useState(false);
   const [blinkRate, setBlinkRate] = useState(500);
   const [tintEnabled, setTintEnabled] = useState(false);
+  const [oldTint, setOldTint] = useState('#ff0000');
+  const [newTint, setNewTint] = useState('#00ff00');
   
   const [drawMode, setDrawMode] = useState<'select' | 'draw' | 'pan'>('pan');
   const [drawColor, setDrawColor] = useState('#e11d48');
@@ -131,9 +133,9 @@ function App() {
   };
 
   const handleExportPdf = async () => {
-    const targetFile = newPdfFile || oldPdfFile;
+    const targetFile = newPdfFile;
     if (!targetFile) {
-      alert("No PDF loaded to export.");
+      alert("No New PDF loaded to export.");
       return;
     }
 
@@ -152,6 +154,7 @@ function App() {
       annotations.forEach((ann) => {
         if (ann.pageIndex < pages.length) {
           const page = pages[ann.pageIndex];
+          // Use crop box if available, otherwise media box
           const { width, height } = page.getSize();
           
           const rgbArr = hexToRgbArr(ann.color);
@@ -163,7 +166,8 @@ function App() {
             width: ann.width * width,
             height: ann.height * height,
             borderColor: color,
-            borderWidth: 2,
+            borderWidth: Math.max(2, width * 0.003), // Scale border with page size
+            borderOpacity: 1,
           };
           
           if (ann.transparent) {
@@ -269,6 +273,10 @@ function App() {
           blinkRate={blinkRate}
           onChangeBlinkRate={(val) => setBlinkRate(2100 - val)}
           tintEnabled={tintEnabled}
+          oldTint={oldTint}
+          newTint={newTint}
+          onChangeOldTint={setOldTint}
+          onChangeNewTint={setNewTint}
           onToggleTint={() => setTintEnabled(p => !p)}
           drawMode={drawMode}
           onChangeDrawMode={setDrawMode}
@@ -320,6 +328,8 @@ function App() {
               blinkEnabled={blinkEnabled}
               blinkRate={blinkRate}
               tintEnabled={tintEnabled}
+              oldTint={oldTint}
+              newTint={newTint}
               drawMode={drawMode}
               annotations={annotations}
               qPressed={qPressed}

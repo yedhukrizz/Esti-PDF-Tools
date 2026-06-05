@@ -7,7 +7,7 @@ export interface PdfPageRendererProps {
   renderScaleMultiplier?: number;
   width?: number; // Target width, overrides scale
   className?: string;
-  tint?: string; // 'red' or 'green' or null
+  tint?: string; // Hex color string, or null
 }
 
 export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
@@ -72,29 +72,34 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
         if (!active) return;
 
         // Apply tint
-        if (tint === 'red' || tint === 'green') {
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
-          
-          for (let i = 0; i < data.length; i += 4) {
-             const r = data[i];
-             const g = data[i+1];
-             const b = data[i+2];
-             
-             // Simple greyscale conversion then tint
-             const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-             
-             if (tint === 'red') {
-               data[i] = 255;
-               data[i+1] = luma;
-               data[i+2] = luma;
-             } else if (tint === 'green') {
-               data[i] = luma;
-               data[i+1] = 255;
-               data[i+2] = luma;
-             }
+        if (tint && tint.startsWith('#')) {
+          // Parse the hex color
+          const rgbResult = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(tint);
+          if (rgbResult) {
+            const tr = parseInt(rgbResult[1], 16);
+            const tg = parseInt(rgbResult[2], 16);
+            const tb = parseInt(rgbResult[3], 16);
+
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+               const r = data[i];
+               const g = data[i+1];
+               const b = data[i+2];
+               
+               // Convert to greyscale (luma) and invert to make the drawing white
+               // Actually we just colorize the background (which is white) to tint.
+               // Wait! A standard multiply tint means replacing white with the tint, 
+               // and black stays black.
+               // So output rgb = input rgb * tint / 255
+               
+               data[i] = (r * tr) / 255;
+               data[i+1] = (g * tg) / 255;
+               data[i+2] = (b * tb) / 255;
+            }
+            context.putImageData(imageData, 0, 0);
           }
-          context.putImageData(imageData, 0, 0);
         }
       } catch (err: any) {
         if (err.name !== 'RenderingCancelledException') {
@@ -112,7 +117,7 @@ export const PdfPageRenderer: React.FC<PdfPageRendererProps> = ({
         renderTaskRef.current.cancel();
       }
     };
-  }, [pdfDoc, pageNumber, scale, width, tint]);
+  }, [pdfDoc, pageNumber, scale, width, tint, renderScaleMultiplier]);
 
   if (renderError) {
     return <div className={`flex items-center justify-center bg-red-50 text-red-600 text-xs text-center border border-red-200 p-2 \${className}`} style={{ width: width || '100%', minHeight: 150 }}>Render Error: {renderError}</div>;

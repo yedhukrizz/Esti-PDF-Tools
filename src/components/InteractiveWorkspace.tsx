@@ -10,6 +10,8 @@ interface InteractiveWorkspaceProps {
   blinkEnabled: boolean;
   blinkRate: number; // in ms
   tintEnabled: boolean;
+  oldTint: string;
+  newTint: string;
   drawMode: 'select' | 'draw' | 'pan';
   annotations: Annotation[];
   onAddAnnotation: (ann: Annotation) => void;
@@ -36,6 +38,8 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
   blinkEnabled,
   blinkRate,
   tintEnabled,
+  oldTint,
+  newTint,
   drawMode,
   annotations,
   onAddAnnotation,
@@ -238,7 +242,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
                 pageNumber={oldPageNumber} 
                 scale={1.5} 
                 renderScaleMultiplier={renderedZoom}
-                tint={tintEnabled ? 'red' : undefined} 
+                tint={tintEnabled ? oldTint : undefined} 
               />
             </div>
           )}
@@ -251,7 +255,7 @@ export const InteractiveWorkspace = forwardRef<WorkspaceHandle, InteractiveWorks
                 pageNumber={newPageNumber} 
                 scale={1.5} 
                 renderScaleMultiplier={renderedZoom}
-                tint={tintEnabled ? 'green' : undefined} 
+                tint={tintEnabled ? newTint : undefined} 
               />
             </div>
           )}

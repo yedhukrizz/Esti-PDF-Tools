@@ -11,6 +11,10 @@ interface ToolbarProps {
   onChangeBlinkRate: (val: number) => void;
   
   tintEnabled: boolean;
+  oldTint: string;
+  newTint: string;
+  onChangeOldTint: (val: string) => void;
+  onChangeNewTint: (val: string) => void;
   onToggleTint: () => void;
   
   drawMode: 'select' | 'draw' | 'pan';
@@ -101,8 +105,16 @@ export const Toolbar: React.FC<ToolbarProps> = (props) => {
           onClick={props.onToggleTint}
           className={`px-3 py-1.5 rounded-md font-medium text-sm transition-colors ${props.tintEnabled ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
         >
-          {props.tintEnabled ? 'Untint' : 'Tint Diff (Red/Green)'}
+          {props.tintEnabled ? 'Untint' : 'Tint Diff'}
         </button>
+        
+        {props.tintEnabled && (
+          <div className="flex items-center gap-2 px-2">
+            <input type="color" value={props.oldTint} onChange={(e) => props.onChangeOldTint(e.target.value)} className="w-6 h-6 p-0 border-0 cursor-pointer" title="Old Page Tint" />
+            <span className="text-xs text-gray-500">v</span>
+            <input type="color" value={props.newTint} onChange={(e) => props.onChangeNewTint(e.target.value)} className="w-6 h-6 p-0 border-0 cursor-pointer" title="New Page Tint" />
+          </div>
+        )}
       </div>
 
       {/* Middle tools (Drawing) */}
